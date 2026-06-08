@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QFZ Observatory — Security Implementation Brief</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232540A3'/%3E%3Ctext x='50' y='66' text-anchor='middle' font-family='system-ui' font-size='52' font-weight='800' fill='white'%3EQ%3C/text%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600;6..12,700;6..12,800;6..12,900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --blue: #2540a3;
+        --blue-deep: #1b2f78;
+        --wine: #862041;
+        --ink: #1a2238;
+        --body: #36405c;
+        --muted: #7682a0;
+        --line: #e4e8f2;
+        --line-soft: #eef1f8;
+        --bg: #eef1f7;
+        --card: #ffffff;
+        --good: #1f8a5b;
+        --warn: #b5791a;
+        --code-bg: #f5f7fc;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: "Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--body);
+        background: var(--bg);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      .page {
+        max-width: 860px;
+        margin: 40px auto;
+        background: var(--card);
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 24px 60px -28px rgba(20, 30, 70, 0.4), 0 2px 8px rgba(20, 30, 70, 0.06);
+      }
+
+      /* ---- masthead ---- */
+      .masthead {
+        background:
+          radial-gradient(900px 360px at 85% -40%, #3a57ad 0%, rgba(58,87,173,0) 60%),
+          linear-gradient(150deg, #2a47ab 0%, var(--blue) 55%, var(--blue-deep) 100%);
+        color: #fff;
+        padding: 46px 56px 40px;
+      }
+      .brandrow { display: flex; align-items: center; gap: 14px; margin-bottom: 30px; }
+      .mark {
+        width: 48px; height: 48px; border-radius: 13px;
+        background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.25);
+        display: grid; place-items: center; font-weight: 900; font-size: 25px; color: #fff;
+      }
+      .brandrow .nm { font-weight: 800; font-size: 16px; letter-spacing: -0.01em; white-space: nowrap; }
+      .brandrow .kk { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.7; white-space: nowrap; }
+      .doc-tag {
+        display: inline-block; font-size: 11.5px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase;
+        color: #bcd0ff; margin-bottom: 12px;
+      }
+      .masthead h1 { font-size: 34px; line-height: 1.12; font-weight: 900; letter-spacing: -0.025em; color: #fff; max-width: 18ch; }
+      .masthead .lede { margin-top: 14px; font-size: 16px; color: #d4ddf6; max-width: 60ch; }
+      .meta { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 10px 26px; font-size: 13px; color: #c2cef0; }
+      .meta b { color: #fff; font-weight: 700; }
+
+      /* ---- body ---- */
+      .body { padding: 14px 56px 52px; }
+      section { padding: 34px 0; border-bottom: 1px solid var(--line-soft); }
+      section:last-child { border-bottom: none; }
+      .eyebrow { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+      .num {
+        width: 27px; height: 27px; border-radius: 8px; flex: none;
+        background: var(--blue); color: #fff; font-weight: 800; font-size: 13px;
+        display: grid; place-items: center;
+      }
+      h2 { font-size: 21px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+      h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin: 22px 0 8px; }
+      p { margin: 10px 0; font-size: 15.5px; }
+      p.tldr { font-size: 16px; color: var(--ink); }
+      strong { color: var(--ink); font-weight: 800; }
+      em { font-style: normal; background: #fff3d6; padding: 0 4px; border-radius: 4px; color: #7a5410; font-weight: 600; }
+      ul { margin: 12px 0 12px 2px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+      li { position: relative; padding-left: 26px; font-size: 15.5px; }
+      li::before { content: ""; position: absolute; left: 4px; top: 10px; width: 7px; height: 7px; border-radius: 2px; background: var(--blue); transform: rotate(45deg); }
+      code {
+        font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13px;
+        background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px;
+        padding: 1px 6px; color: var(--wine);
+      }
+
+      /* ---- callouts ---- */
+      .callout { border-radius: 12px; padding: 18px 20px; margin: 18px 0; font-size: 15px; border: 1px solid; }
+      .callout .ttl { font-weight: 800; font-size: 14px; display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+      .callout svg { width: 17px; height: 17px; flex: none; }
+      .c-key { background: #eef3ff; border-color: #cfddff; color: #2a3b6b; }
+      .c-key .ttl { color: var(--blue); }
+      .c-warn { background: #fff6e6; border-color: #f3dca8; color: #6b4e1c; }
+      .c-warn .ttl { color: var(--warn); }
+      .c-good { background: #eaf7f0; border-color: #bfe6d1; color: #1d5b41; }
+      .c-good .ttl { color: var(--good); }
+
+      /* ---- flow diagram ---- */
+      .flow { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
+      .flowcol { background: #f7f9fd; border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; }
+      .flowcol h4 { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+      .flowcol .when { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
+      .step { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; font-size: 13.5px; color: var(--ink); position: relative; }
+      .step b { display: block; font-weight: 800; font-size: 13px; }
+      .step span { color: var(--body); font-size: 12.5px; }
+      .arrow { height: 18px; display: grid; place-items: center; color: #b7c1da; }
+      .arrow svg { width: 15px; height: 15px; }
+      .flowcol.runtime { border-color: #d3deff; background: #f3f7ff; }
+
+      /* ---- params table ---- */
+      .tbl { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14.5px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+      .tbl th { background: #f4f6fc; text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
+      .tbl td { padding: 13px 16px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+      .tbl tr:last-child td { border-bottom: none; }
+      .tbl td:first-child { font-weight: 800; color: var(--ink); white-space: nowrap; }
+      .tbl td code { font-size: 12.5px; }
+
+      /* ---- file-contents box ---- */
+      .filebox { background: #1c2540; border-radius: 12px; padding: 20px 22px; margin-top: 16px; color: #cdd6ef; font-family: "JetBrains Mono", monospace; font-size: 13px; line-height: 1.9; }
+      .filebox .row { display: flex; gap: 14px; align-items: baseline; }
+      .filebox .k { color: #88a9ff; min-width: 110px; font-weight: 500; }
+      .filebox .v { color: #aeb8d6; }
+      .filebox .tag { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 5px; margin-left: 6px; letter-spacing: 0.03em; }
+      .tag.pub { background: rgba(123,168,255,0.18); color: #9dbcff; }
+      .tag.no { background: rgba(255,120,120,0.16); color: #ff9d9d; }
+
+      /* ---- two-col compare ---- */
+      .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+      .cbox { border-radius: 13px; padding: 18px 20px; border: 1px solid; }
+      .cbox h4 { font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+      .cbox svg { width: 18px; height: 18px; }
+      .cbox ul { margin: 0; gap: 7px; }
+      .cbox li { font-size: 13.5px; padding-left: 22px; }
+      .cbox li::before { width: 6px; height: 6px; top: 9px; }
+      .cbox.ok { background: #f0f9f4; border-color: #c5e8d4; }
+      .cbox.ok h4 { color: var(--good); }
+      .cbox.ok li::before { background: var(--good); }
+      .cbox.risk { background: #fdf1f1; border-color: #f0cccc; }
+      .cbox.risk h4 { color: #b23a3a; }
+      .cbox.risk li::before { background: #b23a3a; }
+
+      .footer { padding: 26px 56px 34px; background: #f7f9fd; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+      @media (max-width: 720px) {
+        .page { margin: 0; border-radius: 0; }
+        .masthead { padding: 34px 24px 30px; }
+        .masthead h1 { font-size: 27px; }
+        .body { padding: 6px 24px 36px; }
+        .footer { padding: 22px 24px; }
+        .flow, .compare { grid-template-columns: 1fr; }
+      }
+      @media print {
+        body { background: #fff; }
+        .page { box-shadow: none; margin: 0; max-width: none; border-radius: 0; }
+        section { break-inside: avoid; }
+        .flow, .compare, .filebox, .tbl, .callout { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- ===== Masthead ===== -->
+      <header class="masthead">
+        <div class="brandrow">
+          <div class="mark">Q</div>
+          <div>
+            <div class="nm">QFZ Observatory</div>
+            <div class="kk">Qatar Free Zones</div>
+          </div>
+        </div>
+        <span class="doc-tag">Security Implementation Brief</span>
+        <h1>How the login &amp; content protection works</h1>
+        <p class="lede">A plain-English and technical explanation of the access control protecting the QFZ Observatory file — what method is used, what is stored, and what it does and does not defend against.</p>
+        <div class="meta">
+          <span><b>Document type:</b> Technical brief</span>
+          <span><b>Scope:</b> Single-file (offline) HTML app</span>
+          <span><b>Classification:</b> Shareable</span>
+        </div>
+      </header>
+
+      <div class="body">
+        <!-- 1. Summary -->
+        <section>
+          <div class="eyebrow"><span class="num">1</span><h2>Summary in one paragraph</h2></div>
+          <p class="tldr">The QFZ Observatory is a single, self-contained HTML file. Its entire content is <strong>encrypted</strong> and only unlocks when a user enters the correct username and password on a login screen. Crucially, <strong>the password is never stored anywhere in the file</strong> — not as plain text, not encrypted, not hashed. The password is used only as the <em>key</em> that unscrambles the content at the moment of login. Because nothing secret is written into the file, there is nothing to "extract" or "decrypt back" into a password — the only conceivable attack is <strong>guessing</strong> the password, which is deliberately made slow and expensive.</p>
+        </section>
+
+        <!-- 2. Core principle -->
+        <section>
+          <div class="eyebrow"><span class="num">2</span><h2>The core principle</h2></div>
+          <p>This is the single most important idea, and the one most often misunderstood:</p>
+          <div class="callout c-key">
+            <div class="ttl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3"/></svg>The password is a key, not a stored value.</div>
+            We do <strong>not</strong> store your password and compare what users type against it. Instead, the password is fed through a one-way process to produce an encryption key, and that key is used to scramble the app content during setup. At login, the entered password regenerates the key and attempts to unscramble the content. Right password → it works. Wrong password → mathematically invalid output, access denied.
+          </div>
+          <p>An analogy: think of the content as a meal cooked with a <strong>secret spice blend</strong> (your password). We save the <em>cooked meal</em> in the file, but we throw the spice blend away. Nobody can taste the meal and reconstruct the blend — they can only un-cook it by supplying the exact same blend again.</p>
+        </section>
+
+        <!-- 3. How it works -->
+        <section>
+          <div class="eyebrow"><span class="num">3</span><h2>How it works, step by step</h2></div>
+          <p>There are two distinct phases — a one-time setup that produces the file, and the unlock that happens every time someone signs in.</p>
+          <div class="flow">
+            <div class="flowcol">
+              <h4>Phase A — Setup</h4>
+              <div class="when">Performed once, when the protected file is built.</div>
+              <div class="step"><b>1. Generate a random salt</b><span>A random value created fresh for this file. Public, not secret.</span></div>
+              <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+              <div class="step"><b>2. Derive the key</b><span>Password + salt run through PBKDF2 (250,000 rounds) → a 256-bit key.</span></div>
+              <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+              <div class="step"><b>3. Encrypt the app</b><span>The whole app is encrypted with AES-256-GCM using that key.</span></div>
+              <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+              <div class="step"><b>4. Save &amp; discard</b><span>Salt, IV and ciphertext are written to the file. The password and key are discarded.</span></div>
+            </div>
+            <div class="flowcol runtime">
+              <h4>Phase B — Unlock</h4>
+              <div class="when">Performed every time a user signs in.</div>
+              <div class="step"><b>1. User enters credentials</b><span>Username and password typed into the login screen.</span></div>
+              <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+              <div class="step"><b>2. Re-derive the key</b><span>Same PBKDF2 process rebuilds the key from password + the stored salt.</span></div>
+              <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+              <div class="step"><b>3. Attempt decryption</b><span>AES-GCM tries to decrypt. Its built-in integrity tag verifies correctness.</span></div>
+              <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+              <div class="step"><b>4. Show or reject</b><span>Valid → the app is revealed. Invalid → "incorrect password", nothing exposed.</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Methods / ciphers -->
+        <section>
+          <div class="eyebrow"><span class="num">4</span><h2>Cryptographic methods used</h2></div>
+          <p>All algorithms are industry-standard and run through the browser's built-in <strong>Web Crypto API</strong> (<code>crypto.subtle</code>) — no custom or homemade cryptography is used.</p>
+          <table class="tbl">
+            <thead><tr><th>Purpose</th><th>Method</th><th>Details</th></tr></thead>
+            <tbody>
+              <tr><td>Content encryption</td><td><code>AES-256-GCM</code></td><td>Authenticated symmetric encryption, 256-bit key — the strongest standard tier. GCM also provides tamper detection.</td></tr>
+              <tr><td>Key derivation</td><td><code>PBKDF2</code></td><td>HMAC-SHA-256, <strong>250,000 iterations</strong>. Stretches the password into the key slowly, to make password guessing expensive.</td></tr>
+              <tr><td>Salt</td><td>16 random bytes</td><td>Unique per file. Prevents pre-computed ("rainbow table") attacks. Stored in the file; not secret.</td></tr>
+              <tr><td>IV / nonce</td><td>12 random bytes</td><td>Initialisation vector for AES-GCM. Stored in the file; not secret.</td></tr>
+              <tr><td>Username binding</td><td>GCM additional<br/>authenticated data</td><td>The username is bound into the encryption, so <strong>both</strong> username and password must be correct to unlock — and neither is stored.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- 5. What's in the file -->
+        <section>
+          <div class="eyebrow"><span class="num">5</span><h2>What the file actually contains</h2></div>
+          <p>Anyone can open the file in a text editor or browser console. Here is everything access-related they would find — and notice what is <strong>not</strong> there:</p>
+          <div class="filebox">
+            <div class="row"><span class="k">salt</span><span class="v">random bytes<span class="tag pub">PUBLIC · safe</span></span></div>
+            <div class="row"><span class="k">iv</span><span class="v">random bytes<span class="tag pub">PUBLIC · safe</span></span></div>
+            <div class="row"><span class="k">ciphertext</span><span class="v">the encrypted app — useless without the key<span class="tag pub">PUBLIC · safe</span></span></div>
+            <div class="row"><span class="k">password</span><span class="v">— not present —<span class="tag no">NEVER STORED</span></span></div>
+            <div class="row"><span class="k">derived key</span><span class="v">— not present —<span class="tag no">NEVER STORED</span></span></div>
+          </div>
+          <p>The salt, IV and ciphertext are safe to be public because they are meaningless without the password. There is no stored secret to read, reverse, or "decrypt out" of the file.</p>
+        </section>
+
+        <!-- 6. Login session -->
+        <section>
+          <div class="eyebrow"><span class="num">6</span><h2>Login &amp; session behaviour</h2></div>
+          <ul>
+            <li>A branded login screen requests a username and password before any content is shown.</li>
+            <li>On a correct unlock, the session stays open while the browser is open (it persists across page reloads) and is cleared on <strong>Sign out</strong> or when the browser/tab is closed.</li>
+            <li>During an active session, the derived key (not the password) is held in the browser's per-tab session storage so reloads do not require re-typing. This only ever exists <em>after</em> a successful login and is discarded on sign-out.</li>
+            <li>The unlocked app is rendered using the page's own origin (via an inline document), so its internal navigation works identically whether the file is opened from a web server or directly from disk.</li>
+          </ul>
+        </section>
+
+        <!-- 7. Threat model -->
+        <section>
+          <div class="eyebrow"><span class="num">7</span><h2>What it protects against — and what it doesn't</h2></div>
+          <div class="compare">
+            <div class="cbox ok">
+              <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Protected against</h4>
+              <ul>
+                <li>Reading the password from the file or browser console — it isn't there.</li>
+                <li>"Decrypting" or reversing the password from the salt — mathematically impossible; the salt holds no password information.</li>
+                <li>Viewing the content without logging in — it exists only as encrypted bytes until unlocked.</li>
+                <li>Pre-computed / rainbow-table attacks — defeated by the random salt.</li>
+                <li>Silent tampering with the file — AES-GCM detects modification.</li>
+              </ul>
+            </div>
+            <div class="cbox risk">
+              <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>Residual risks</h4>
+              <ul>
+                <li><strong>Guessing the password.</strong> The only real attack: try many passwords until one decrypts. PBKDF2's 250k iterations make this slow, but a weak or predictable password can still be guessed.</li>
+                <li>This is a self-contained file, so access <strong>cannot be revoked remotely</strong> once shared. Changing the password requires re-issuing the file.</li>
+                <li>Anyone who is already logged in can see the content (as intended).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout c-warn">
+            <div class="ttl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>The password is the entire lock.</div>
+            Since guessing is the only viable attack, the protection is exactly as strong as the password is hard to guess. Avoid passwords based on the username, dates, or common words. Use a long, random password and store it in a password manager.
+          </div>
+        </section>
+
+        <!-- 8. Recommendation / when to upgrade -->
+        <section>
+          <div class="eyebrow"><span class="num">8</span><h2>When to use this — and when to go further</h2></div>
+          <p>This approach is the <strong>strongest protection achievable for a single offline file with no server</strong>. It is well suited to gating a self-contained demo or document behind a shared credential.</p>
+          <div class="callout c-good">
+            <div class="ttl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>Consider a backend if you need:</div>
+            per-user accounts, the ability to revoke access after sharing, audit logs of who opened it, password resets, or rate-limiting of guesses. Those require a server and cannot be delivered by a standalone file alone.
+          </div>
+        </section>
+      </div>
+
+      <footer class="footer">
+        <span>QFZ Observatory · Security Implementation Brief</span>
+        <span>Standard Web Crypto · AES-256-GCM · PBKDF2-HMAC-SHA-256</span>
+      </footer>
+    </div>
+  </body>
+</html>
